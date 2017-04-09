@@ -11,27 +11,14 @@ class ZooKeeper(LineReceiver):
 
 
     def connectionMade(self):
-        self.sendLine("Connected.")
-
-
-    def createNode(self, node):
-        # Check if znode path starts with a slash
-        if node[0] != '/':
-            self.handle_BADNODE(node)
-
-        # Check path up to node exists
-        p, _ = os.path.split(node)
-        if p in self.znodes:
-            self.handle_ADDNODE(node)
-        else:
-            self.handle_BADNODE(node)
+        self.sendLine("true:Connected")
 
 
     def lineReceived(self, msg):
         # Check command
         idx = msg.find(':')
         if idx == -1:
-            self.handle_BADCOMMAND(msg)
+            self.sendLine('false:bad message')
 
         cmd = msg[:idx]
         if cmd == 'CREATE':        
@@ -46,8 +33,10 @@ class ZooKeeper(LineReceiver):
             self.handle_SET(msg[(idx+1):])
         elif cmd == 'CHILDREN':
             self.handle_GETCHILDREN(msg[(idx+1):])
+        elif cmd == 'WATCH':
+            self.handle_WATCH(msg[(idx+1):])
         else:
-            self.sendLine('false')
+            self.sendLine('false:unknown command')
 
 
     def handle_CREATENODE(self, node):
@@ -61,10 +50,10 @@ class ZooKeeper(LineReceiver):
             self.sendLine('false')
         else:
             parent, child = os.path.split(node)
-            self.znodes[node] = { 'parent': parent, 'children': {} }
+            self.znodes[node] = { 'parent': parent, 'children': {}, 'watchers': []}
             self.znodes[parent]['children'][child] = True
     
-            self.sendLine('true')
+            self.sendLine('true:CREATED:{}'.format(node))
 
 
     def handle_DELETENODE(self, node):
@@ -78,15 +67,23 @@ class ZooKeeper(LineReceiver):
             parent, child_name = os.path.split(node)
             del self.znodes[parent]['children'][child_name]
 
+
             # Delete node and all its children :(
             stack = [node]
             while len(stack):
                 curr_node = stack.pop()
                 stack.extend(self.znodes[curr_node]['children'].keys())
+
+                # Notify watchers
+                while len(self.znodes[curr_node]['watchers']):
+                    watcher = self.znodes[curr_node]['watchers'].pop()
+                    watcher.sendLine('true:WATCHER_NOTICE:DELETED:{}'.format(curr_node))
+
                 del self.znodes[curr_node]
-            self.sendLine('true')
+            self.sendLine('true:DELETED:{}'.format(node))
         else:
-            self.sendLine('false')
+            self.sendLine('false:NOT DELETED:{}'.format(node))
+
 
     def handle_EXISTSNODE(self, node):
         # Check if znode path starts with a slash
@@ -99,6 +96,7 @@ class ZooKeeper(LineReceiver):
         else:
             self.sendLine('false')
 
+
     def handle_GET(self, node):
         # Check if znode path starts with a slash
         if node[0] != '/':
@@ -109,6 +107,7 @@ class ZooKeeper(LineReceiver):
             self.sendLine(self.znodes[node]['data'])
         else:
             self.sendLine('false')
+
 
     def handle_SET(self, msg):
         idx = msg.find(':')
@@ -125,9 +124,14 @@ class ZooKeeper(LineReceiver):
         # Check that node exists
         if node in self.znodes:
             self.znodes[node]['data'] = data
-            self.sendLine('true')
+            # Notify watchers
+            while len(self.znodes[node]['watchers']):
+                watcher = self.znodes[node]['watchers'].pop()
+                watcher.sendLine('true:WATCHER_NOFITY:CHANGED:{}'.format(node))
+            self.sendLine('true:SET:{}'.format(node))
         else:
             self.sendLine('false')
+
 
     def handle_GETCHILDREN(self, node):
         # Check if znode path starts with a slash
@@ -139,11 +143,25 @@ class ZooKeeper(LineReceiver):
             self.sendLine(','.join(self.znodes[node]['children'].keys()))
         else:
             self.sendLine('false')
-      
+
+
+    def handle_WATCH(self, node):
+        # Check if znode path starts with a slash
+        if node[0] != '/':
+            self.sendLine('false:WATCHING:improper naming:{}'.format(node))
+
+        # Check that node exists
+        if node in self.znodes:
+            self.znodes[node]['watchers'].append(self)
+            self.sendLine('true:WATCHING:{}'.format(node))
+        else:
+            self.sendLine('false:WATCHING:node does not exist:{}'.format(node))
+
+
 class ZooKeeperFactory(Factory):
 
     def __init__(self):
-        self.znodes = {'/': { 'parent': None, 'children': {} } }
+        self.znodes = {'/': { 'parent': None, 'children': {}, 'watchers': [] } }
 
 
     def buildProtocol(self, addr):
