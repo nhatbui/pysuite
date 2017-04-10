@@ -77,6 +77,10 @@ The following are a list of features to be implemented.
 
 The unit tests are a tremendously important aspect of this project since they attempt to ensure the accuracy of the ZooKeeper implementation.
 
+To run it from the project directory:
+
+    python -m unittest test.test_pookeeper
+
 # Contributing
 
 Please add issues, pull requests, anything that you see fit. As stated above, this is an academic (as in 'for my personal understanding', not as in 'for a grade') so any feedback would be extremely helpful.
