@@ -72,6 +72,7 @@ The goal of this project is to implement all features of ZooKeeper. It is not co
 
 The following are a list of features to be implemented.
 
+* ZAB! ZooKeeper Atomic Protocol
 * __Replication__ a.k.a. ZooKeeper ensemble
 * All guarantees associated with a ZooKeeper ensemble
 * Znodes API
@@ -88,6 +89,10 @@ To run it from the project directory:
 # Contributing
 
 Please add issues, pull requests, anything that you see fit. As stated above, this is an academic (as in 'for my personal understanding', not as in 'for a grade') so any feedback would be extremely helpful.
+
+I'm particularly interested in the following:
+
+* What application protocol to use on top of TCP? What does ZooKeeper use?
 
 # "This is a very unfortunate name"
 
