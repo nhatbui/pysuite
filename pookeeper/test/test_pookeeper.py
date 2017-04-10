@@ -94,10 +94,49 @@ class PooKeeperTestCase(unittest.TestCase):
         self.assertEqual(client_msgs[1], 'true:WATCHING:/nhat\r')
         self.assertEqual(client_msgs[2], 'true:WATCHER_NOTICE:DELETED:/nhat\r')
 
-        print('new_tr')
-        print(new_tr.value())
-        print('self.tr')
-        print(self.tr.value())
+        #print('new_tr')
+        #print(new_tr.value())
+        #print('self.tr')
+        #print(self.tr.value())
+
+
+    def test_ephemeral(self):
+        self.proto.lineReceived('ECREATE:/nhat')
+
+        # Check node added like a normal node
+        self.assertTrue('/nhat' in self.proto.znodes)
+        self.assertTrue('/' in self.proto.znodes)
+        self.assertTrue(len(self.proto.znodes['/']['children']) == 1)
+        self.assertTrue('nhat' in self.proto.znodes['/']['children'])
+        self.assertTrue(self.proto.znodes['/nhat']['parent'] == '/')
+
+        # Check if client got messages as expected
+        orig_client_msgs = self.tr.value().split('\n')
+        self.assertEqual(orig_client_msgs[0], 'true:Connected\r')
+        self.assertEqual(orig_client_msgs[1], 'true:CREATED_ENODE:/nhat\r')
+        
+        # Make new client who cares about this node
+        new_proto = self.factory.buildProtocol(('127.0.0.1', 1))
+        new_tr = proto_helpers.StringTransport()
+        new_proto.makeConnection(new_tr)
+
+        # New client watches node
+        new_proto.lineReceived('WATCH:/nhat')
+
+        # Check that a watcher obj has been added to list
+        self.assertTrue(len(self.proto.znodes['/nhat']['watchers']) == 1)
+
+        # Disconnect connection
+        #del self.proto
+        self.proto.connectionLost()
+
+        # Check if client got a notice
+        # NOTE: during our checks there's no '\n' char because split()
+        # removed it.
+        client_msgs = new_tr.value().split('\n')
+        self.assertEqual(client_msgs[1], 'true:WATCHING:/nhat\r')
+        self.assertEqual(client_msgs[2], 'true:WATCHER_NOTICE:DELETED:/nhat\r')
+  
 
 
 if __name__ == '__main__':
