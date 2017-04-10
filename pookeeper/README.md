@@ -4,7 +4,12 @@ Python + ZooKeeper = PooKeeper
 
 A Python+[Twisted](https://twistedmatrix.com/trac/) implementation of [ZooKeeper](http://zookeeper.apache.org/).
 
-The purpose of this project is academic: recreate all features of ZooKeeper to appreciate the intricacies of it. All tooling decisions have been made to decrease the time spent writing the service in order to spend more time testing its correctness. For example, Twisted was chosen so that the server state, the znodes, are maintained in one process. Choosing a framework such as [Flask](http://flask.pocoo.org/) or [Django](https://www.djangoproject.com/) would require maintaining state in a database. API may differ in syntax and the application protocol may differ.
+The purpose of this project is academic (as in 'for my personal understanding', not as in 'for a grade):
+recreate all features of ZooKeeper to appreciate the intricacies of it.
+All tooling decisions have been made to decrease the time spent writing the service in order to spend more time testing its correctness.
+For example, Twisted was chosen so that the server state, the znodes, are maintained in one process.
+Choosing a framework such as [Flask](http://flask.pocoo.org/) or [Django](https://www.djangoproject.com/) would require maintaining state in a database.
+API may differ in syntax and the application protocol may differ.
 
 # Usage
 
@@ -13,6 +18,8 @@ The purpose of this project is academic: recreate all features of ZooKeeper to a
     python pookeeper.py
 
 ### Start a telnet client to connect to the Twisted server.
+
+    telnet [host] [port]
 
 ### Send commands
 
@@ -38,6 +45,7 @@ The purpose of this project is academic: recreate all features of ZooKeeper to a
 * Get name of all children of a node
     * `CHILDREN:[node_name]`
     * Example: `CHILDREN:/yolo` 
+    * Note: children are in order which they were added.
 
 # Currently Implemented Features
 
@@ -64,6 +72,14 @@ The following are a list of features to be implemented.
 * All guarantees associated with a ZooKeeper ensemble
 * Znodes API
     * sync
+
+# Unit-Tests
+
+The unit tests are a tremendously important aspect of this project since they attempt to ensure the accuracy of the ZooKeeper implementation.
+
+# Contributing
+
+Please add issues, pull requests, anything that you see fit. As stated above, this is an academic (as in 'for my personal understanding', not as in 'for a grade') so any feedback would be extremely helpful.
 
 # "This is a very unfortunate name"
 
