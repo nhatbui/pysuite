@@ -13,6 +13,10 @@ API may differ in syntax and the application protocol may differ.
 
 # Usage
 
+### Install all required dependencies
+
+    pip install -r requirements.txt
+
 ### Start the server
 
     python pookeeper.py
