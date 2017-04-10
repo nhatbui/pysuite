@@ -1,5 +1,5 @@
 import os
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from twisted.internet.protocol import Factory
 from twisted.protocols.basic import LineReceiver
 from twisted.internet import reactor
@@ -219,7 +219,7 @@ class ZooKeeper(LineReceiver):
 class ZooKeeperFactory(Factory):
 
     def __init__(self):
-        self.znodes = {'/': { 'parent': None, 'children': {}, 'watchers': [] } }
+        self.znodes = {'/': { 'parent': None, 'children': OrderedDict(), 'watchers': [] } }
         self.ephem_nodes = defaultdict(list)
 
 
