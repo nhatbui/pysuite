@@ -86,12 +86,18 @@ class ZooKeeper(LineReceiver):
         p, _ = os.path.split(node)
         if p not in self.znodes:
             self.sendLine('false')
-        else:
-            parent, child = os.path.split(node)
-            self.znodes[node] = { 'parent': parent, 'children': {}, 'watchers': []}
-            self.znodes[parent]['children'][child] = True
-    
-            self.sendLine('true:CREATED:{}'.format(node))
+            return
+
+        # Check if node already exists
+        if node in self.znodes:
+            self.sendLine('false:node already exists')
+            return
+
+        parent, child = os.path.split(node)
+        self.znodes[node] = { 'parent': parent, 'children': {}, 'watchers': []}
+        self.znodes[parent]['children'][child] = True
+
+        self.sendLine('true:CREATED:{}'.format(node))
 
 
     def handle_CREATEEPHEMERALNODE(self, node):
