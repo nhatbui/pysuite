@@ -136,7 +136,78 @@ class PooKeeperTestCase(unittest.TestCase):
         client_msgs = new_tr.value().split('\n')
         self.assertEqual(client_msgs[1], 'true:WATCHING:/nhat\r')
         self.assertEqual(client_msgs[2], 'true:WATCHER_NOTICE:DELETED:/nhat\r')
-  
+
+
+    def test_addAlreadyExist(self):
+        self.addNode('/nhat')
+        self.assertTrue('/nhat' in self.proto.znodes)
+        self.assertTrue('/' in self.proto.znodes)
+        self.assertTrue(len(self.proto.znodes['/']['children']) == 1)
+        self.assertTrue('nhat' in self.proto.znodes['/']['children'])
+        self.assertTrue(self.proto.znodes['/nhat']['parent'] == '/')
+        self.tr.clear()
+        self.addNode('/nhat')
+
+        self.assertEqual(self.tr.value().split(':')[0], 'false')
+        self.assertTrue('/nhat' in self.proto.znodes)
+        self.assertTrue('/' in self.proto.znodes)
+        self.assertTrue(len(self.proto.znodes['/']['children']) == 1)
+        self.assertTrue('nhat' in self.proto.znodes['/']['children'])
+        self.assertTrue(self.proto.znodes['/nhat']['parent'] == '/')
+
+
+    def test_leaderElection(self):
+        self.addNode('/leader')
+
+        # Check node added like a normal node
+        self.assertTrue('/leader' in self.proto.znodes)
+        self.assertTrue('/' in self.proto.znodes)
+        self.assertTrue(len(self.proto.znodes['/']['children']) == 1)
+        self.assertTrue('leader' in self.proto.znodes['/']['children'])
+        self.assertTrue(self.proto.znodes['/leader']['parent'] == '/')
+
+        def add_candidate(candidate, transportProtocol):
+            transportProtocol.clear()
+    
+            candidate.lineReceived('ECREATE:/leader/{}:{}'.format(*candidate.address))
+
+            # Check node added like a normal node
+            self.assertTrue('/leader/{}:{}'.format(*candidate.address) in self.proto.znodes)
+            self.assertTrue('{}:{}'.format(*candidate.address) in self.proto.znodes['/leader']['children'])
+            self.assertTrue(self.proto.znodes['/leader/{}:{}'.format(*candidate.address)]['parent'] == '/leader')
+
+            transportProtocol.clear()
+    
+            # check which children exists
+            candidate.lineReceived('CHILDREN:/leader')
+            children_str = transportProtocol.value().strip()
+
+            if len(self.proto.znodes['/leader']['children']) == 0:
+                self.assertEqual(children_str, '')
+
+            children = children_str.split(',')
+            if children[0] == '{}:{}'.format(*candidate.address):
+                print('{} is leader'.format(candidate.address))
+            else:
+                i = children.index('{}:{}'.format(*candidate.address))
+                num_watchers = len(self.proto.znodes['/leader/{}'.format(children[i-1])]['watchers'])
+                candidate.lineReceived('WATCH:/leader/{}'.format(children[i-1]))
+                # Check that a watcher obj has been added to list
+                self.assertEqual(len(self.proto.znodes['/leader/{}'.format(children[i-1])]['watchers']), num_watchers + 1)
+
+            transportProtocol.clear()
+
+        # Make new client who adds itself to leader node
+        new_proto = self.factory.buildProtocol(('127.0.0.1', 1))
+        new_tr = proto_helpers.StringTransport()
+        new_proto.makeConnection(new_tr)
+
+        add_candidate(self.proto, self.tr)
+        add_candidate(new_proto, new_tr)
+
+        self.proto.connectionLost()
+
+        self.assertEqual(new_tr.value().strip(), 'true:WATCHER_NOTICE:DELETED:/leader/127.0.0.1:0')
 
 
 if __name__ == '__main__':
